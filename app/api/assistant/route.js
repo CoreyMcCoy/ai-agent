@@ -1,0 +1,57 @@
+import OpenAI from 'openai';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// @Desc: Export a function that creates an assistant using openai.beta.assistants.create()
+export async function POST(request) {
+  const { name, instructions } = await request.json();
+  try {
+    const assistant = await openai.beta.assistants.create({
+      name: name,
+      instructions: instructions,
+      tools: [
+        {
+          type: 'code_interpreter',
+        },
+      ],
+      model: 'gpt-4-turbo',
+    });
+    console.log(assistant);
+    return Response.json(
+      { message: 'Beep Bop Boop...agent created successfully.', assistant: assistant },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error(error);
+    return Response.json({ message: 'Failed to create agent.' }, { status: 500 });
+  }
+}
+
+// @Desc: Export a function that returns all the assistants using openai.beta.assistants.list()
+// export async function GET() {
+//   try {
+//     const myAssistants = await openai.beta.assistants.list({
+//       order: 'desc',
+//       limit: 3,
+//     });
+//     return Response.json(
+//       { message: 'Here are the last 3 assistants.', assistants: myAssistants.data },
+//       { status: 200 }
+//     );
+//   } catch (error) {
+//     console.error(error);
+//     return Response.json({ message: 'Failed to fetch agents.' }, { status: 500 });
+//   }
+// }
+
+// @Desc: Export a function that returns a single assistant using openai.beta.assistants.retrieve()
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  try {
+    const assistant = await openai.beta.assistants.retrieve(id);
+    return Response.json({ message: 'Assistant found.', assistant: assistant }, { status: 200 });
+  } catch (error) {
+    console.error(error);
+    return Response.json({ message: 'Failed to fetch agent.' }, { status: 500 });
+  }
+}
