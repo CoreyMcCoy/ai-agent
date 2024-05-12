@@ -7,15 +7,15 @@ export default function Home() {
   const [formData, setFormData] = useState({
     name: '',
     instructions: '',
+    id: '',
+    chat: '',
   });
-  const { name, instructions } = formData;
+  const { name, instructions, id, chat } = formData;
   const [messages, setMessages] = useState('');
   const [assistant, setAssistant] = useState({});
   const [myAssistants, setMyAssistants] = useState([]);
-  const [singleAssistant, setSingleAssistant] = useState({
-    id: '',
-  });
-  const { id = '' } = singleAssistant || {};
+  const [thread, setThread] = useState('');
+  const [chatResponse, setChatResponse] = useState([]);
 
   // Fetch a single assistant
   const getAgent = async (e) => {
@@ -32,15 +32,17 @@ export default function Home() {
 
     setAssistant(data.assistant);
 
-    setSingleAssistant({
+    setFormData({
       id: '',
+      name: '',
+      instructions: '',
     });
   };
 
-  // Fetch all the assistants
+  // Get all the assistants
   const listAgents = async (e) => {
     e.preventDefault();
-    const response = await fetch('api/assistant');
+    const response = await fetch('api/assistant/get');
     const data = await response.json();
 
     if (!response.ok) {
@@ -76,18 +78,100 @@ export default function Home() {
     setFormData({
       name: '',
       instructions: '',
+      id: '',
     });
+  };
+
+  // Create a thread
+  const createThread = async (e) => {
+    e.preventDefault();
+    console.log('Creating a thread');
+    const response = await fetch('api/threads', {
+      method: 'POST',
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessages(data.message);
+      return;
+    } else {
+      setMessages(data.message);
+    }
+
+    setThread(data.thread.id);
+
+    // Save to local storage
+    localStorage.setItem('thread', JSON.stringify(data.thread.id));
+  };
+
+  // Create a chat
+  const createChat = async (e) => {
+    e.preventDefault();
+    console.log(chat);
+
+    // Get the thread from local storage
+    const thread = JSON.parse(localStorage.getItem('thread'));
+    console.log(thread);
+
+    const response = await fetch(`api/messages?thread=${thread}`, {
+      method: 'POST',
+      body: JSON.stringify({ chat }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessages(data.message);
+      return;
+    } else {
+      setMessages(data.message);
+    }
+
+    setChatResponse(data.message);
+
+    setFormData({
+      chat: '',
+      name: '',
+      instructions: '',
+      id: '',
+    });
+  };
+
+  // Run a thread
+  const runThread = async (e) => {
+    e.preventDefault();
+    console.log('Running a thread');
+
+    // Get the thread from local storage
+    const thread = JSON.parse(localStorage.getItem('thread'));
+    console.log(thread);
+
+    // Get the assistant id from local storage
+    const assistants_id = JSON.parse(localStorage.getItem('assistants'));
+    console.log(assistants_id[0].id);
+
+    const response = await fetch(`api/run?thread=${thread}`, {
+      method: 'POST',
+      body: JSON.stringify({ assistants_id: assistants_id[0].id }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessages(data.message);
+      return;
+    } else {
+      setMessages(data.message);
+    }
   };
 
   useEffect(() => {
     toast.success(messages);
-  }, [assistant, myAssistants, messages]);
+  }, [assistant, myAssistants, messages, thread]);
 
   return (
     <>
       <h1 className="text-xl font-medium mb-8">AI Agent Practice</h1>
-      <div className="grid grid-cols-2 gap-6">
-        <div className="w-5/6 flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-10">
+        <div className="flex flex-col gap-6">
           <div className="card card-body bg-base-200">
             <h3 className="card-title text-lg font-medium mb-5">Create an Assistant</h3>
             <form onSubmit={createAgent} className="flex flex-col space-y-3">
@@ -129,14 +213,10 @@ export default function Home() {
                 >
                   <p>Name: {assistant.name}</p>
                   <p>ID: {assistant.id}</p>
-                  <p>Instructions: {assistant.instructions}</p>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-
-        <div className="w-5/6">
           <div className="card card-body bg-base-200">
             <h3 className="card-title text-lg font-medium mb-5">Get a single Assistant</h3>
             <form onSubmit={getAgent} className="flex flex-col space-y-3">
@@ -145,7 +225,7 @@ export default function Home() {
                 type="text"
                 className="input input-bordered w-full"
                 value={id}
-                onChange={(e) => setSingleAssistant({ ...singleAssistant, id: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                 required
               />
               <button type="submit" className="btn btn-primary">
@@ -154,8 +234,51 @@ export default function Home() {
             </form>
             <div className="card card-body bg-base-300 flex flex-col mt-3 space-y-1 text-sm">
               <p>Name: {assistant.name}</p>
-              <p>ID: {assistant.id}</p>
               <p>Instructions: {assistant.instructions}</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="card card-body bg-base-200 mb-6">
+            <h3 className="card-title text-lg font-medium mb-3">Create a thread</h3>
+            <form onSubmit={createThread} className="flex flex-col">
+              <button type="submit" className="btn btn-primary">
+                Create a thread
+              </button>
+            </form>
+            <div className="flex flex-col">
+              <div className="card card-body bg-base-300 flex flex-col mt-3 space-y-1 text-sm">
+                <p>Thread: {thread}</p>
+              </div>
+            </div>
+          </div>
+          <div className="card card-body bg-base-200 mb-6">
+            <h3 className="card-title text-lg font-medium mb-3">Run a thread</h3>
+            <form onSubmit={runThread} className="flex flex-col">
+              <button type="submit" className="btn btn-primary">
+                Create a thread
+              </button>
+            </form>
+          </div>
+          <div className="card card-body bg-base-200">
+            <h3 className="card-title text-lg font-medium mb-5">Chat with Assistant</h3>
+            <form onSubmit={createChat} className="flex flex-col space-y-3">
+              <label>
+                <textarea
+                  type="text"
+                  className="textarea textarea-bordered w-full"
+                  value={chat}
+                  onChange={(e) => setFormData({ ...formData, chat: e.target.value })}
+                  required
+                ></textarea>
+              </label>
+              <button type="submit" className="btn btn-primary">
+                Chat
+              </button>
+            </form>
+            <div className="card card-body bg-base-300 flex flex-col mt-3 space-y-1 text-sm">
+              <p>Chat: {chatResponse}</p>
             </div>
           </div>
         </div>
